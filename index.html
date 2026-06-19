@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Boeing 747 Three.js Study</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="scene" aria-label="Interactive Three.js Boeing 747 model"></canvas>
+      <div class="hud">
+        <div>
+          <strong>Boeing 747-400</strong>
+          <span id="viewLabel">orbit inspection</span>
+        </div>
+        <nav aria-label="Camera views">
+          <button data-view="orbit">Orbit</button>
+          <button data-view="front">Front</button>
+          <button data-view="side">Side</button>
+          <button data-view="top">Top</button>
+          <button data-view="rear">Rear</button>
+          <button data-view="quarter">Quarter</button>
+        </nav>
+      </div>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
