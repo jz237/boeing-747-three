@@ -86,13 +86,13 @@ const mats = {
   }),
 };
 
-function makeTextPlane(text, width, height, fontSize = 72) {
+function makeTextPlane(text, width, height, fontSize = 72, color = "#173b61") {
   const canvasEl = document.createElement("canvas");
   canvasEl.width = 1024;
   canvasEl.height = 256;
   const ctx = canvasEl.getContext("2d");
   ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-  ctx.fillStyle = "#173b61";
+  ctx.fillStyle = color;
   ctx.font = `700 ${fontSize}px Arial, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -164,6 +164,12 @@ function addCheatlines() {
     registration.position.set(24.8, 0.05, side * 4.47);
     registration.rotation.y = side > 0 ? 0 : Math.PI;
     root.add(registration);
+
+    const airlineTitle = makeTextPlane("CLAW AIR", 8.2, 1.05, 88);
+    airlineTitle.name = "airline fuselage title";
+    airlineTitle.position.set(-18.8, 2.42, side * 4.44);
+    airlineTitle.rotation.y = side > 0 ? 0 : Math.PI;
+    root.add(airlineTitle);
   }
 }
 
@@ -201,9 +207,25 @@ function addFuselage() {
   hump.receiveShadow = true;
   root.add(hump);
 
+  const humpSeamMat = new THREE.LineBasicMaterial({ color: 0x87939d, transparent: true, opacity: 0.42 });
+  for (const side of [-1, 1]) {
+    const humpSeam = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-33.0, 3.25, side * 1.58),
+        new THREE.Vector3(-29.0, 3.52, side * 2.05),
+        new THREE.Vector3(-22.0, 3.42, side * 2.08),
+        new THREE.Vector3(-16.8, 3.06, side * 1.62),
+      ]),
+      humpSeamMat,
+    );
+    humpSeam.name = "upper deck hump base seam";
+    root.add(humpSeam);
+  }
+
   addCheatlines();
   addWindows();
   addDoors();
+  addCargoHatches();
   addNoseDetails();
   addPanelLines();
 }
@@ -353,6 +375,24 @@ function addNoseDetails() {
   radomeLine.name = "subtle nose radome seam";
   root.add(radomeLine);
 
+  const wiperMat = new THREE.LineBasicMaterial({ color: 0x1c252d, transparent: true, opacity: 0.88 });
+  for (const [z1, y1, z2, y2] of [
+    [-0.72, 3.1, -0.25, 3.42],
+    [-0.18, 3.05, 0.1, 3.41],
+    [0.72, 3.1, 0.25, 3.42],
+    [0.18, 3.05, -0.1, 3.41],
+  ]) {
+    const wiper = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-36.95, y1, z1),
+        new THREE.Vector3(-37.02, y2, z2),
+      ]),
+      wiperMat,
+    );
+    wiper.name = "cockpit windshield wiper arm";
+    root.add(wiper);
+  }
+
   const pitotMat = new THREE.MeshStandardMaterial({ color: 0x2d3a45, roughness: 0.35, metalness: 0.5 });
   for (const side of [-1, 1]) {
     const pitot = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.9, 8), pitotMat);
@@ -384,6 +424,48 @@ function addDoors() {
   }
 }
 
+function addCargoHatches() {
+  const hatchMat = new THREE.LineBasicMaterial({ color: 0x74828d, transparent: true, opacity: 0.68 });
+  for (const side of [-1, 1]) {
+    for (const [x, y, width, height] of [
+      [-22.5, -1.0, 4.4, 1.25],
+      [8.2, -1.05, 5.1, 1.35],
+      [24.0, -0.72, 2.2, 0.9],
+    ]) {
+      const pts = [
+        new THREE.Vector3(-width / 2, -height / 2, 0),
+        new THREE.Vector3(width / 2, -height / 2, 0),
+        new THREE.Vector3(width / 2, height / 2, 0),
+        new THREE.Vector3(-width / 2, height / 2, 0),
+      ];
+      const hatch = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), hatchMat);
+      hatch.name = "lower-deck cargo hatch outline";
+      hatch.position.set(x, y, side * 4.48);
+      hatch.rotation.y = side > 0 ? 0 : Math.PI;
+      root.add(hatch);
+    }
+
+    for (const [x, y] of [
+      [-34.4, 0.2],
+      [-5.6, -1.35],
+      [31.4, 0.25],
+    ]) {
+      const service = new THREE.LineLoop(
+        new THREE.BufferGeometry().setFromPoints(
+          new THREE.EllipseCurve(0, 0, 0.42, 0.26, 0, Math.PI * 2)
+            .getPoints(32)
+            .map((p) => new THREE.Vector3(p.x, p.y, 0)),
+        ),
+        hatchMat,
+      );
+      service.name = "small oval fuselage service hatch";
+      service.position.set(x, y, side * 4.49);
+      service.rotation.y = side > 0 ? 0 : Math.PI;
+      root.add(service);
+    }
+  }
+}
+
 function addPanelLines() {
   const lineMat = new THREE.LineBasicMaterial({ color: 0x9aa5ae, transparent: true, opacity: 0.42 });
   for (const x of [-32.2, -15.5, 4.2, 20.8, 31.8]) {
@@ -392,6 +474,38 @@ function addPanelLines() {
     const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), lineMat);
     ring.name = "fuselage section panel ring";
     root.add(ring);
+  }
+
+  const seamMat = new THREE.LineBasicMaterial({ color: 0x8f9aa3, transparent: true, opacity: 0.32 });
+  const crownSeam = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-17.8, 4.17, 0),
+      new THREE.Vector3(-4, 4.24, 0),
+      new THREE.Vector3(14, 4.08, 0),
+      new THREE.Vector3(29, 3.45, 0),
+    ]),
+    seamMat,
+  );
+  crownSeam.name = "subtle fuselage crown longitudinal seam";
+  root.add(crownSeam);
+
+  for (const side of [-1, 1]) {
+    for (const [y, z, name] of [
+      [2.58, 3.25, "upper fuselage longitudinal lap joint"],
+      [-1.88, 3.9, "lower fuselage longitudinal lap joint"],
+    ]) {
+      const seam = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(-31, y, side * z),
+          new THREE.Vector3(-8, y + 0.05, side * (z + 0.13)),
+          new THREE.Vector3(15, y - 0.08, side * (z + 0.08)),
+          new THREE.Vector3(30, y - 0.2, side * (z - 0.28)),
+        ]),
+        seamMat,
+      );
+      seam.name = name;
+      root.add(seam);
+    }
   }
 }
 
@@ -461,6 +575,21 @@ function makeWingGeometry(side) {
   return geometry;
 }
 
+function wingSurfacePoint(side, span, chord, lift = 0.055) {
+  const leadingX = -6.9 + 11.2 * span;
+  const trailingX = 14.2 - 5.6 * span;
+  const chordLength = trailingX - leadingX;
+  const sweepCamber = Math.sin(Math.PI * chord) * 0.045;
+  const baseY = -1.08 + 0.92 * span;
+  const thickness = 0.46 - 0.3 * span;
+  const crown = Math.sin(Math.PI * chord) * 0.32 + 0.03;
+  return new THREE.Vector3(
+    leadingX + chordLength * chord,
+    baseY + thickness * crown + sweepCamber + lift,
+    side * (4.4 + 27.4 * span),
+  );
+}
+
 function addWings() {
   for (const side of [-1, 1]) {
     const wing = new THREE.Mesh(makeWingGeometry(side), mats.wing);
@@ -505,10 +634,77 @@ function addWings() {
     addWingDetails(side);
     addEngines(side);
   }
+  addWingRootFairings();
+}
+
+function addWingRootFairings() {
+  const centerFairing = new THREE.Mesh(new THREE.CapsuleGeometry(1.05, 13.8, 8, 32), mats.underside);
+  centerFairing.name = "smooth center wing box belly fairing";
+  centerFairing.rotation.z = Math.PI / 2;
+  centerFairing.position.set(3.0, -1.88, 0);
+  centerFairing.scale.set(1, 0.26, 1.55);
+  centerFairing.castShadow = true;
+  centerFairing.receiveShadow = true;
+  root.add(centerFairing);
+
+  for (const side of [-1, 1]) {
+    const rootFairing = new THREE.Mesh(new THREE.CapsuleGeometry(0.38, 10.5, 6, 24), mats.underside);
+    rootFairing.name = "teardrop wing root side fairing";
+    rootFairing.rotation.z = Math.PI / 2;
+    rootFairing.position.set(3.4, -1.25, side * 4.25);
+    rootFairing.scale.set(1, 0.48, 0.55);
+    rootFairing.castShadow = true;
+    root.add(rootFairing);
+  }
 }
 
 function addWingDetails(side) {
   const panelMat = new THREE.MeshStandardMaterial({ color: 0x7f8b95, roughness: 0.5 });
+  const upperPanelMat = new THREE.LineBasicMaterial({ color: 0x7d8992, transparent: true, opacity: 0.46 });
+  for (const [spanA, chordA, spanB, chordB] of [
+    [0.14, 0.22, 0.63, 0.26],
+    [0.18, 0.45, 0.72, 0.48],
+    [0.24, 0.67, 0.82, 0.7],
+    [0.48, 0.18, 0.9, 0.2],
+  ]) {
+    const line = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        wingSurfacePoint(side, spanA, chordA),
+        wingSurfacePoint(side, spanB, chordB),
+      ]),
+      upperPanelMat,
+    );
+    line.name = "upper wing spoiler and aileron panel line";
+    root.add(line);
+  }
+
+  for (const span of [0.22, 0.4, 0.58, 0.76, 0.91]) {
+    const slatLine = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        wingSurfacePoint(side, span - 0.055, 0.085, 0.06),
+        wingSurfacePoint(side, span + 0.055, 0.12, 0.06),
+      ]),
+      upperPanelMat,
+    );
+    slatLine.name = "leading-edge slat segment joint";
+    root.add(slatLine);
+  }
+
+  for (const [span, chord, spanRadius, chordRadius] of [
+    [0.3, 0.38, 0.035, 0.028],
+    [0.52, 0.36, 0.032, 0.026],
+    [0.72, 0.42, 0.028, 0.024],
+  ]) {
+    const points = [];
+    for (let i = 0; i <= 40; i++) {
+      const t = (Math.PI * 2 * i) / 40;
+      points.push(wingSurfacePoint(side, span + Math.cos(t) * spanRadius, chord + Math.sin(t) * chordRadius, 0.067));
+    }
+    const accessPanel = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(points), upperPanelMat);
+    accessPanel.name = "subtle wing fuel access panel outline";
+    root.add(accessPanel);
+  }
+
   for (const [x, z, width] of [
     [0.5, 12.4, 10.5],
     [3.8, 20.6, 8.6],
@@ -584,6 +780,30 @@ function addEngines(side) {
     pylon.castShadow = true;
     root.add(pylon);
 
+    const pylonSeamMat = new THREE.LineBasicMaterial({ color: 0x5f6b75, transparent: true, opacity: 0.55 });
+    const pylonSurfaceZ = side * z + side * 0.19 * scale;
+    for (const [x1, y1, x2, y2] of [
+      [x - 1.28, -1.28, x - 0.16, -2.85],
+      [x - 0.55, -1.18, x + 0.2, -2.34],
+    ]) {
+      const seam = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(x1, y1, pylonSurfaceZ),
+          new THREE.Vector3(x2, y2, pylonSurfaceZ),
+        ]),
+        pylonSeamMat,
+      );
+      seam.name = "engine pylon access panel seam";
+      root.add(seam);
+    }
+
+    const wingCollar = new THREE.Mesh(new THREE.BoxGeometry(2.15 * scale, 0.12, 0.46 * scale), mats.panel);
+    wingCollar.name = "engine pylon wing attachment collar";
+    wingCollar.position.set(x - 0.65, -1.1, side * z);
+    wingCollar.rotation.z = -0.08;
+    wingCollar.castShadow = true;
+    root.add(wingCollar);
+
     const nacelle = makeLathe(
       "tapered high-bypass turbofan nacelle",
       [
@@ -599,6 +819,26 @@ function addEngines(side) {
     );
     nacelle.position.set(x, -3.9, side * z);
     root.add(nacelle);
+
+    for (const [dx, radius, tube] of [
+      [-1.05, 1.56, 0.025],
+      [0.85, 1.42, 0.02],
+      [1.78, 1.18, 0.02],
+    ]) {
+      const seam = new THREE.Mesh(new THREE.TorusGeometry(radius * scale, tube, 8, 72), mats.panel);
+      seam.name = "turbofan nacelle panel seam ring";
+      seam.position.set(x + dx, -3.9, side * z);
+      seam.rotation.y = Math.PI / 2;
+      root.add(seam);
+    }
+
+    for (const sideStripe of [-1, 1]) {
+      const reverserLine = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.035, 0.035), mats.panel);
+      reverserLine.name = "thin thrust reverser cascade seam";
+      reverserLine.position.set(x + 0.7, -2.48, side * z + sideStripe * side * 0.92 * scale);
+      reverserLine.rotation.y = side * -0.08;
+      root.add(reverserLine);
+    }
 
     const lip = new THREE.Mesh(new THREE.TorusGeometry(1.18 * scale, 0.12 * scale, 16, 64), mats.leadingEdge);
     lip.name = "polished intake lip";
@@ -620,6 +860,22 @@ function addEngines(side) {
     fanFace.position.set(x - 2.86, -3.9, side * z);
     fanFace.rotation.y = Math.PI / 2;
     root.add(fanFace);
+
+    const vaneMat = new THREE.LineBasicMaterial({ color: 0xb8c1c8, transparent: true, opacity: 0.68 });
+    for (let i = 0; i < 10; i++) {
+      const angle = (Math.PI * 2 * i) / 10;
+      const inner = 0.45 * scale;
+      const outer = 0.95 * scale;
+      const vane = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(x - 2.96, -3.9 + Math.cos(angle) * inner, side * z + Math.sin(angle) * inner),
+          new THREE.Vector3(x - 2.96, -3.9 + Math.cos(angle + 0.08) * outer, side * z + Math.sin(angle + 0.08) * outer),
+        ]),
+        vaneMat,
+      );
+      vane.name = "turbofan inlet guide vane";
+      root.add(vane);
+    }
 
     const exhaust = makeCylinder("dark engine exhaust", 0.98 * scale, 1.05 * scale, 0.16, mats.dark, 64);
     exhaust.position.set(x + 2.54, -3.9, side * z);
@@ -665,6 +921,17 @@ function addTail() {
   dorsal.scale.set(1, 0.34, 0.46);
   root.add(dorsal);
 
+  const tailconeSeam = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints(
+      new THREE.EllipseCurve(0, 0, 1.25, 1.05, 0, Math.PI * 2)
+        .getPoints(72)
+        .map((p) => new THREE.Vector3(36.25, p.y - 0.1, p.x)),
+    ),
+    new THREE.LineBasicMaterial({ color: 0x8c98a2, transparent: true, opacity: 0.5 }),
+  );
+  tailconeSeam.name = "tailcone panel seam";
+  root.add(tailconeSeam);
+
   const vShape = new THREE.Shape();
   vShape.moveTo(25.5, 0);
   vShape.lineTo(34.5, 13.6);
@@ -679,6 +946,34 @@ function addTail() {
   vertical.position.z = -0.24;
   vertical.castShadow = true;
   root.add(vertical);
+
+  const verticalLeadingEdge = new THREE.Mesh(
+    new THREE.TubeGeometry(
+      new THREE.CatmullRomCurve3([new THREE.Vector3(25.85, 0.35, 0), new THREE.Vector3(34.55, 13.35, 0)]),
+      20,
+      0.055,
+      8,
+      false,
+    ),
+    mats.leadingEdge,
+  );
+  verticalLeadingEdge.name = "polished vertical stabilizer leading edge cap";
+  verticalLeadingEdge.castShadow = true;
+  root.add(verticalLeadingEdge);
+
+  const tailLineMat = new THREE.LineBasicMaterial({ color: 0x80909c, transparent: true, opacity: 0.54 });
+  for (const [x1, y1, x2, y2] of [
+    [35.5, 1.0, 37.6, 12.8],
+    [30.1, 5.4, 38.2, 5.0],
+    [32.2, 8.5, 38.9, 8.2],
+  ]) {
+    const line = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x1, y1, -0.5), new THREE.Vector3(x2, y2, -0.5)]),
+      tailLineMat,
+    );
+    line.name = "vertical stabilizer rudder panel line";
+    root.add(line);
+  }
 
   for (const side of [-1, 1]) {
     const tailLogo = makePanelShape(
@@ -710,6 +1005,12 @@ function addTail() {
     tailAccent.position.set(34.8, 5.2, side * 0.65);
     tailAccent.rotation.set(0.02, side > 0 ? 0 : Math.PI, 0.18);
     root.add(tailAccent);
+
+    const tailMark = makeTextPlane("CL", 2.2, 0.9, 122, "#f4f7f9");
+    tailMark.name = "white tail livery monogram";
+    tailMark.position.set(34.5, 7.72, side * 0.68);
+    tailMark.rotation.set(0.02, side > 0 ? 0 : Math.PI, 0.18);
+    root.add(tailMark);
   }
 
   for (const side of [-1, 1]) {
@@ -728,15 +1029,160 @@ function addTail() {
     stab.position.y = 3.2;
     stab.castShadow = true;
     root.add(stab);
+
+    const stabLeadingEdge = new THREE.Mesh(
+      new THREE.TubeGeometry(
+        new THREE.CatmullRomCurve3([
+          new THREE.Vector3(25.2, 3.42, side * 0.76),
+          new THREE.Vector3(34.1, 3.48, side * 9.25),
+        ]),
+        20,
+        0.045,
+        8,
+        false,
+      ),
+      mats.leadingEdge,
+    );
+    stabLeadingEdge.name = "polished horizontal stabilizer leading edge cap";
+    stabLeadingEdge.castShadow = true;
+    root.add(stabLeadingEdge);
+
+    for (const [x1, z1, x2, z2] of [
+      [28.1, 3.3, 35.7, 8.1],
+      [31.0, 1.7, 36.0, 6.8],
+    ]) {
+      const elevatorLine = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(x1, 3.42, side * z1),
+          new THREE.Vector3(x2, 3.44, side * z2),
+        ]),
+        tailLineMat,
+      );
+      elevatorLine.name = "horizontal stabilizer elevator panel line";
+      root.add(elevatorLine);
+    }
   }
+}
+
+function addAntennaDetails() {
+  const antennaMat = new THREE.MeshStandardMaterial({ color: 0x3a4650, roughness: 0.5, metalness: 0.18 });
+  const bladeShape = new THREE.Shape();
+  bladeShape.moveTo(-0.32, 0);
+  bladeShape.lineTo(0.32, 0);
+  bladeShape.lineTo(0.12, 0.54);
+  bladeShape.lineTo(-0.18, 0.48);
+  bladeShape.lineTo(-0.32, 0);
+  for (const [x, y, scale] of [
+    [-12.8, 4.28, 0.78],
+    [4.5, 4.14, 0.62],
+    [18.5, 3.78, 0.52],
+  ]) {
+    const blade = new THREE.Mesh(new THREE.ShapeGeometry(bladeShape), antennaMat);
+    blade.name = "low-profile fuselage blade antenna";
+    blade.position.set(x, y, 0);
+    blade.scale.set(scale, scale, scale);
+    blade.castShadow = true;
+    root.add(blade);
+  }
+
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.55, 24, 12), mats.fuselage);
+  dome.name = "low satcom fairing dome";
+  dome.position.set(-7.2, 4.12, 0);
+  dome.scale.set(1.65, 0.22, 0.82);
+  dome.castShadow = true;
+  root.add(dome);
+
+  const wickMat = new THREE.LineBasicMaterial({ color: 0x202830, transparent: true, opacity: 0.78 });
+  for (const side of [-1, 1]) {
+    for (const [span, chord, dx] of [
+      [0.62, 1.0, 0.85],
+      [0.78, 1.0, 0.78],
+      [0.94, 0.96, 0.62],
+    ]) {
+      const base = wingSurfacePoint(side, span, chord, 0.0);
+      const wick = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([base, base.clone().add(new THREE.Vector3(dx, -0.04, side * 0.22))]),
+        wickMat,
+      );
+      wick.name = "thin wing trailing-edge static discharge wick";
+      root.add(wick);
+    }
+
+    for (const [x, z] of [
+      [35.5, 8.9],
+      [37.1, 7.3],
+    ]) {
+      const tailWick = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(x, 3.45, side * z),
+          new THREE.Vector3(x + 0.62, 3.42, side * (z + 0.26)),
+        ]),
+        wickMat,
+      );
+      tailWick.name = "horizontal stabilizer static discharge wick";
+      root.add(tailWick);
+    }
+  }
+}
+
+function addExteriorLightDetails() {
+  const lensMat = new THREE.MeshStandardMaterial({
+    color: 0xf6ead0,
+    emissive: 0xffd982,
+    emissiveIntensity: 0.5,
+    roughness: 0.12,
+    metalness: 0.05,
+  });
+  const strobeMat = new THREE.MeshStandardMaterial({
+    color: 0xf8fbff,
+    emissive: 0xd8efff,
+    emissiveIntensity: 0.75,
+    roughness: 0.1,
+    metalness: 0.02,
+  });
+  for (const side of [-1, 1]) {
+    for (const [x, y, z, scale] of [
+      [-5.6, -0.82, 6.2, 0.18],
+      [-3.8, -0.65, 9.0, 0.16],
+    ]) {
+      const light = new THREE.Mesh(new THREE.SphereGeometry(scale, 16, 10), lensMat);
+      light.name = "recessed wing landing light lens";
+      light.position.set(x, y, side * z);
+      light.scale.set(1.35, 0.36, 0.72);
+      root.add(light);
+    }
+
+    const wingStrobe = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 10), strobeMat);
+    wingStrobe.name = "white wingtip strobe lens";
+    wingStrobe.position.set(6.1, 0.02, side * 31.9);
+    wingStrobe.scale.set(1.2, 0.72, 0.72);
+    root.add(wingStrobe);
+  }
+
+  for (const z of [-0.22, 0.22]) {
+    const taxiLight = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 8), lensMat);
+    taxiLight.name = "nose gear taxi light";
+    taxiLight.position.set(-26.8, -3.35, z);
+    taxiLight.scale.set(0.7, 1, 1);
+    root.add(taxiLight);
+  }
+
+  const tailLight = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 10), strobeMat);
+  tailLight.name = "white tailcone navigation light";
+  tailLight.position.set(37.65, -0.12, 0);
+  tailLight.scale.set(0.72, 0.55, 0.55);
+  root.add(tailLight);
 }
 
 function addLandingGear() {
   const strutMat = mats.leadingEdge;
+  const wellMat = new THREE.MeshBasicMaterial({ color: 0x1f2830, transparent: true, opacity: 0.28, side: THREE.DoubleSide });
   const tireGeo = new THREE.TorusGeometry(0.46, 0.15, 16, 36);
   const hubGeo = new THREE.CylinderGeometry(0.23, 0.23, 0.08, 24);
   const strutGeo = new THREE.CylinderGeometry(0.07, 0.1, 2.25, 12);
   const bogieGeo = new THREE.BoxGeometry(1.35, 0.16, 0.16);
+  const braceGeo = new THREE.CylinderGeometry(0.035, 0.045, 1.35, 10);
+  const doorGeo = new THREE.BoxGeometry(0.08, 1.2, 0.72);
 
   const gearSets = [
     [-26.5, -4.12, 0, 1],
@@ -746,11 +1192,41 @@ function addLandingGear() {
     [11.2, -4.3, 2.0, 2],
   ];
   for (const [x, y, z, wheels] of gearSets) {
+    const well = new THREE.Mesh(new THREE.CircleGeometry(1, 32), wellMat);
+    well.name = "dark landing gear wheel-well opening";
+    well.position.set(x, y + 1.85, z);
+    well.rotation.x = -Math.PI / 2;
+    well.scale.set(wheels === 1 ? 0.65 : 1.1, wheels === 1 ? 0.95 : 0.72, 1);
+    root.add(well);
+
     const strut = new THREE.Mesh(strutGeo, strutMat);
     strut.name = "landing gear strut";
     strut.position.set(x, y + 1.1, z);
     strut.castShadow = true;
     root.add(strut);
+
+    const braceA = new THREE.Mesh(braceGeo, strutMat);
+    braceA.name = "angled landing gear torque link";
+    braceA.position.set(x - 0.36, y + 0.82, z);
+    braceA.rotation.set(0, 0, -0.46);
+    braceA.castShadow = true;
+    root.add(braceA);
+
+    const braceB = new THREE.Mesh(braceGeo, strutMat);
+    braceB.name = "opposite landing gear torque link";
+    braceB.position.set(x + 0.34, y + 0.82, z);
+    braceB.rotation.set(0, 0, 0.46);
+    braceB.castShadow = true;
+    root.add(braceB);
+
+    for (const side of z === 0 ? [-1, 1] : [Math.sign(z)]) {
+      const door = new THREE.Mesh(doorGeo, mats.underside);
+      door.name = "open landing gear bay door";
+      door.position.set(x - 0.35, y + 1.25, z + side * (wheels === 1 ? 0.82 : 0.72));
+      door.rotation.set(0.18, side * 0.18, side * 0.18);
+      door.castShadow = true;
+      root.add(door);
+    }
 
     const bogie = new THREE.Mesh(bogieGeo, strutMat);
     bogie.name = "landing gear bogie beam";
@@ -822,6 +1298,34 @@ function addLightsAndWorld() {
   taxiLine.rotation.y = 0.08;
   scene.add(taxiLine);
 
+  const scuffMat = new THREE.MeshBasicMaterial({ color: 0x6f7880, transparent: true, opacity: 0.18 });
+  for (const [x, z, length, width, yaw] of [
+    [-16, -15, 26, 0.32, -0.12],
+    [7, 10, 34, 0.28, 0.08],
+    [22, -22, 22, 0.22, 0.2],
+    [-28, 18, 18, 0.2, -0.18],
+  ]) {
+    const scuff = new THREE.Mesh(new THREE.BoxGeometry(length, 0.018, width), scuffMat);
+    scuff.name = "subtle tire scuff on concrete apron";
+    scuff.position.set(x, -5.025, z);
+    scuff.rotation.y = yaw;
+    scene.add(scuff);
+  }
+
+  const stainMat = new THREE.MeshBasicMaterial({ color: 0x4f5961, transparent: true, opacity: 0.1, side: THREE.DoubleSide });
+  for (const [x, z, sx, sz] of [
+    [-3, -13.4, 2.4, 1.2],
+    [3, 13.4, 2.1, 1.1],
+    [12, -2.2, 3.2, 1.4],
+  ]) {
+    const stain = new THREE.Mesh(new THREE.CircleGeometry(1, 40), stainMat);
+    stain.name = "faint apron fluid stain";
+    stain.position.set(x, -5.018, z);
+    stain.rotation.x = -Math.PI / 2;
+    stain.scale.set(sx, sz, 1);
+    scene.add(stain);
+  }
+
   const beaconTop = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), mats.beacon);
   beaconTop.name = "red anti-collision beacon";
   beaconTop.position.set(-3, 4.2, 0);
@@ -836,6 +1340,8 @@ addFuselage();
 addWings();
 addTail();
 addLandingGear();
+addAntennaDetails();
+addExteriorLightDetails();
 addLightsAndWorld();
 
 const viewLabel = document.querySelector("#viewLabel");

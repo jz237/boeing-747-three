@@ -16,6 +16,7 @@ Final visible criteria:
 - Cambered swept main wings with dihedral, underwing fairings and upturned winglets.
 - Tall swept vertical stabilizer and swept horizontal stabilizers.
 - Passenger windows, upper-deck windows, cockpit windscreens, doors, cheatlines, panel rings and landing gear.
+- Cargo hatches, antennas, static wicks, access panels, lighting lenses, pylon details and apron grounding marks.
 - Repeatable screenshot system for every required inspection angle.
 - Preserved final inspection renders in `inspection-renders/`.
 
@@ -51,3 +52,27 @@ custom wing mesh, unified cockpit window geometry and modeled engine pylons.
 24. Removed overlapping cockpit decals and rebuilt the cockpit with framed forward/side panes.
 25. Replaced boxy engine pylons with swept plate-style pylon fairings.
 26. Added underwing flap-track canoe fairings to make the wing underside less bare.
+27. Added landing gear bay doors and torque-link braces.
+28. Added rudder and elevator panel lines to the tail surfaces.
+29. Added lower-deck cargo hatch outlines and small oval service hatches.
+30. Added nacelle seam rings and thrust-reverser seam lines.
+31. Added center wing box and side wing-root fairings.
+32. Tested an APU exhaust mark at the tailcone; review found it read as detached.
+33. Repositioned and reduced the APU detail; review still found it too artifact-like.
+34. Removed the APU dot and kept the cleaner tailcone seam.
+35. Added upper-wing spoiler and aileron panel lines.
+36. Added blade antennas, a satcom dome and static discharge wicks.
+37. Added subtle apron tire scuffs and fluid stains for ground contact.
+38. Added recessed landing light and nose gear taxi light lenses.
+39. Added subtle crown and longitudinal fuselage seam lines.
+40. Added cockpit windshield wiper arms.
+41. Added engine pylon access seams and wing attachment collars.
+42. Added polished leading-edge caps to the vertical and horizontal stabilizers.
+43. Added dark landing gear wheel-well openings.
+44. Added leading-edge slat segment joints.
+45. Added turbofan inlet guide vanes.
+46. Added a white monogram to the blue tail livery panel.
+47. Added an airline-style fuselage title.
+48. Added upper deck hump base seam lines.
+49. Added subtle wing fuel/access panel outlines.
+50. Added wingtip and tailcone strobe/navigation lenses, then corrected the tail lens position after render review.
