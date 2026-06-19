@@ -51,6 +51,13 @@ const mats = {
     metalness: 0.06,
     clearcoat: 0.35,
   }),
+  winglet: new THREE.MeshPhysicalMaterial({
+    color: 0xd8dde2,
+    roughness: 0.36,
+    metalness: 0.06,
+    clearcoat: 0.35,
+    side: THREE.DoubleSide,
+  }),
   leadingEdge: new THREE.MeshStandardMaterial({
     color: 0xaeb8c2,
     roughness: 0.22,
@@ -64,16 +71,37 @@ const mats = {
     metalness: 0,
     transmission: 0.08,
     clearcoat: 1,
+    side: THREE.DoubleSide,
   }),
   stripeBlue: new THREE.MeshStandardMaterial({ color: 0x174a7c, roughness: 0.35 }),
   stripeRed: new THREE.MeshStandardMaterial({ color: 0xb8212f, roughness: 0.38 }),
   panel: new THREE.MeshStandardMaterial({ color: 0x73808c, roughness: 0.55 }),
+  fan: new THREE.MeshStandardMaterial({ color: 0x9aa6af, roughness: 0.5, metalness: 0.18 }),
   beacon: new THREE.MeshStandardMaterial({
     color: 0xd8142a,
     emissive: 0x9b0718,
     emissiveIntensity: 0.6,
   }),
 };
+
+function makeTextPlane(text, width, height, fontSize = 72) {
+  const canvasEl = document.createElement("canvas");
+  canvasEl.width = 1024;
+  canvasEl.height = 256;
+  const ctx = canvasEl.getContext("2d");
+  ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+  ctx.fillStyle = "#173b61";
+  ctx.font = `700 ${fontSize}px Arial, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, canvasEl.width / 2, canvasEl.height / 2);
+  const texture = new THREE.CanvasTexture(canvasEl);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
+  mesh.name = `${text} fuselage marking`;
+  return mesh;
+}
 
 function makeCylinder(name, radiusTop, radiusBottom, depth, material, radial = 64) {
   const mesh = new THREE.Mesh(
@@ -124,6 +152,16 @@ function addCheatlines() {
     upperBlue.name = "upper deck blue cheatline";
     upperBlue.position.set(-25.2, 4.0, side * 2.25);
     root.add(upperBlue);
+
+    const typeMark = makeTextPlane("747-400", 4.8, 1.0, 84);
+    typeMark.position.set(-33.2, -0.28, side * 4.46);
+    typeMark.rotation.y = side > 0 ? 0 : Math.PI;
+    root.add(typeMark);
+
+    const registration = makeTextPlane("N747CL", 5.5, 1.0, 82);
+    registration.position.set(24.8, 0.05, side * 4.47);
+    registration.rotation.y = side > 0 ? 0 : Math.PI;
+    root.add(registration);
   }
 }
 
@@ -164,6 +202,7 @@ function addFuselage() {
   addCheatlines();
   addWindows();
   addDoors();
+  addNoseDetails();
   addPanelLines();
 }
 
@@ -207,13 +246,100 @@ function addWindows() {
   root.add(cabin);
 }
 
+function makePanelShape(name, points, material) {
+  const shape = new THREE.Shape();
+  shape.moveTo(points[0][0], points[0][1]);
+  for (const point of points.slice(1)) shape.lineTo(point[0], point[1]);
+  shape.lineTo(points[0][0], points[0][1]);
+  const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), material);
+  mesh.name = name;
+  return mesh;
+}
+
+function addNoseDetails() {
+  const windscreen = new THREE.Group();
+  const panels = [
+    {
+      z: -0.88,
+      points: [
+        [-0.42, -0.16],
+        [0.05, -0.14],
+        [0.14, 0.22],
+        [-0.34, 0.28],
+      ],
+    },
+    {
+      z: -0.28,
+      points: [
+        [-0.36, -0.14],
+        [0.36, -0.13],
+        [0.28, 0.27],
+        [-0.28, 0.27],
+      ],
+    },
+    {
+      z: 0.28,
+      points: [
+        [-0.36, -0.13],
+        [0.36, -0.14],
+        [0.28, 0.27],
+        [-0.28, 0.27],
+      ],
+    },
+    {
+      z: 0.88,
+      points: [
+        [-0.05, -0.14],
+        [0.42, -0.16],
+        [0.34, 0.28],
+        [-0.14, 0.22],
+      ],
+    },
+  ];
+
+  for (const panel of panels) {
+    const glass = makePanelShape("forward cockpit windscreen pane", panel.points, mats.glass);
+    glass.position.set(-36.55, 3.16, panel.z);
+    glass.rotation.y = Math.PI / 2;
+    windscreen.add(glass);
+  }
+
+  const radomeLine = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints(
+      new THREE.EllipseCurve(0, 0, 1.72, 1.36, 0, Math.PI * 2)
+        .getPoints(96)
+        .map((p) => new THREE.Vector3(-37.45, p.y - 0.18, p.x)),
+    ),
+    new THREE.LineBasicMaterial({ color: 0x7d8994, transparent: true, opacity: 0.55 }),
+  );
+  radomeLine.name = "subtle nose radome seam";
+  root.add(radomeLine);
+
+  const pitotMat = new THREE.MeshStandardMaterial({ color: 0x2d3a45, roughness: 0.35, metalness: 0.5 });
+  for (const side of [-1, 1]) {
+    const pitot = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.9, 8), pitotMat);
+    pitot.name = "nose pitot probe";
+    pitot.position.set(-36.6, 1.3, side * 2.1);
+    pitot.rotation.z = Math.PI / 2;
+    root.add(pitot);
+  }
+
+  root.add(windscreen);
+}
+
 function addDoors() {
-  const doorGeo = new THREE.PlaneGeometry(0.62, 1.3);
+  const doorMat = new THREE.LineBasicMaterial({ color: 0x6f7c87, transparent: true, opacity: 0.72 });
   for (const side of [-1, 1]) {
     for (const x of [-31.5, -14.3, 4.5, 18.5, 29]) {
-      const door = new THREE.Mesh(doorGeo, mats.panel);
-      door.name = "flush passenger door";
-      door.position.set(x, 0.95, side * 4.43);
+      const pts = [
+        new THREE.Vector3(-0.31, -0.65, 0),
+        new THREE.Vector3(0.31, -0.65, 0),
+        new THREE.Vector3(0.31, 0.65, 0),
+        new THREE.Vector3(-0.31, 0.65, 0),
+      ];
+      const door = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), doorMat);
+      door.name = "outlined passenger door";
+      door.position.set(x, 0.95, side * 4.46);
       door.rotation.y = side > 0 ? 0 : Math.PI;
       root.add(door);
     }
@@ -270,10 +396,25 @@ function addWings() {
     leading.castShadow = true;
     root.add(leading);
 
-    const winglet = new THREE.Mesh(new THREE.BoxGeometry(0.7, 4.1, 1.4), mats.wing);
-    winglet.name = "upturned winglet";
-    winglet.position.set(6.3, 1.15, side * 31.2);
-    winglet.rotation.set(0.18, 0.05 * side, 0.36 * side);
+    const wingletShape = new THREE.Shape();
+    wingletShape.moveTo(-0.65, -1.6);
+    wingletShape.lineTo(0.42, 2.48);
+    wingletShape.lineTo(1.55, 2.18);
+    wingletShape.lineTo(0.58, -1.7);
+    wingletShape.lineTo(-0.65, -1.6);
+    const winglet = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(wingletShape, {
+        depth: 0.18,
+        bevelEnabled: true,
+        bevelThickness: 0.025,
+        bevelSize: 0.025,
+        bevelSegments: 1,
+      }),
+      mats.winglet,
+    );
+    winglet.name = "swept upturned winglet";
+    winglet.position.set(6.4, 1.48, side * 31.45);
+    winglet.rotation.set(side * -0.16, 0.03 * side, 0.18 * side);
     winglet.castShadow = true;
     root.add(winglet);
 
@@ -314,28 +455,60 @@ function addEngines(side) {
     [-2.7, 13.4, 1.05],
     [2.9, 23.6, 0.98],
   ]) {
-    const pylon = new THREE.Mesh(new THREE.BoxGeometry(0.55, 2.15, 0.55), mats.panel);
+    const pylon = new THREE.Mesh(new THREE.BoxGeometry(0.52, 2.35, 0.62), mats.panel);
     pylon.name = "engine pylon";
     pylon.position.set(x - 1.1, -2.0, side * z);
-    pylon.rotation.set(0.15, 0, side * -0.18);
+    pylon.rotation.set(0.18, 0, side * -0.22);
     pylon.castShadow = true;
     root.add(pylon);
 
-    const nacelle = makeCylinder("high-bypass turbofan nacelle", 1.58 * scale, 1.38 * scale, 4.9, mats.fuselage, 64);
+    const nacelle = makeLathe(
+      "tapered high-bypass turbofan nacelle",
+      [
+        [0.78 * scale, -2.55],
+        [1.36 * scale, -2.32],
+        [1.62 * scale, -1.35],
+        [1.55 * scale, 1.28],
+        [1.2 * scale, 2.28],
+        [0.82 * scale, 2.54],
+      ],
+      mats.fuselage,
+      72,
+    );
     nacelle.position.set(x, -3.9, side * z);
-    nacelle.rotation.y = Math.PI / 2;
-    nacelle.scale.y = 0.9;
     root.add(nacelle);
+
+    const lip = new THREE.Mesh(new THREE.TorusGeometry(1.18 * scale, 0.12 * scale, 16, 64), mats.leadingEdge);
+    lip.name = "polished intake lip";
+    lip.position.set(x - 2.55, -3.9, side * z);
+    lip.rotation.y = Math.PI / 2;
+    lip.castShadow = true;
+    root.add(lip);
 
     const intake = makeCylinder("dark circular intake", 1.15 * scale, 1.15 * scale, 0.18, mats.dark, 64);
     intake.position.set(x - 2.54, -3.9, side * z);
     intake.rotation.y = Math.PI / 2;
     root.add(intake);
 
+    const fanFace = new THREE.Mesh(
+      new THREE.CircleGeometry(0.96 * scale, 72),
+      new THREE.MeshBasicMaterial({ color: 0x56636d, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
+    );
+    fanFace.name = "visible turbofan face";
+    fanFace.position.set(x - 2.86, -3.9, side * z);
+    fanFace.rotation.y = Math.PI / 2;
+    root.add(fanFace);
+
     const exhaust = makeCylinder("dark engine exhaust", 0.98 * scale, 1.05 * scale, 0.16, mats.dark, 64);
     exhaust.position.set(x + 2.54, -3.9, side * z);
     exhaust.rotation.y = Math.PI / 2;
     root.add(exhaust);
+
+    const exhaustLip = new THREE.Mesh(new THREE.TorusGeometry(0.84 * scale, 0.08 * scale, 14, 48), mats.leadingEdge);
+    exhaustLip.name = "metal engine exhaust ring";
+    exhaustLip.position.set(x + 2.54, -3.9, side * z);
+    exhaustLip.rotation.y = Math.PI / 2;
+    root.add(exhaustLip);
 
     const spinner = makeCone("engine spinner", 0.38 * scale, 0.65, mats.leadingEdge);
     spinner.position.set(x - 2.72, -3.9, side * z);
@@ -343,9 +516,9 @@ function addEngines(side) {
     root.add(spinner);
 
     for (let i = 0; i < 14; i++) {
-      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.72 * scale, 0.12), mats.panel);
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.82 * scale, 0.08), mats.fan);
       blade.name = "fan blade";
-      blade.position.set(x - 2.83, -3.9, side * z);
+      blade.position.set(x - 2.9, -3.9, side * z);
       blade.rotation.x = (Math.PI * 2 * i) / 14;
       root.add(blade);
     }
@@ -353,6 +526,23 @@ function addEngines(side) {
 }
 
 function addTail() {
+  const dorsal = makeLathe(
+    "smooth dorsal tail root fairing",
+    [
+      [0.15, 27.0],
+      [0.72, 29.0],
+      [1.0, 32.0],
+      [0.62, 35.2],
+      [0.18, 37.8],
+    ],
+    mats.fuselage,
+    48,
+  );
+  dorsal.name = "smooth dorsal tail root fairing";
+  dorsal.position.y = 3.55;
+  dorsal.scale.set(1, 0.34, 0.46);
+  root.add(dorsal);
+
   const vShape = new THREE.Shape();
   vShape.moveTo(25.5, 0);
   vShape.lineTo(34.5, 13.6);
@@ -369,13 +559,31 @@ function addTail() {
   root.add(vertical);
 
   for (const side of [-1, 1]) {
-    const tailLogo = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 5.4), mats.stripeBlue);
+    const tailLogo = makePanelShape(
+      "blue slanted vertical tail livery panel",
+      [
+        [-2.15, -2.35],
+        [1.95, -1.72],
+        [1.55, 2.55],
+        [-1.85, 2.05],
+      ],
+      mats.stripeBlue,
+    );
     tailLogo.name = "blue vertical tail livery panel";
     tailLogo.position.set(34.5, 7.4, side * 0.64);
     tailLogo.rotation.set(0.02, side > 0 ? 0 : Math.PI, 0.18);
     root.add(tailLogo);
 
-    const tailAccent = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 0.42), mats.stripeRed);
+    const tailAccent = makePanelShape(
+      "red slanted vertical tail accent",
+      [
+        [-2.05, -0.24],
+        [1.85, 0.07],
+        [1.8, 0.42],
+        [-2.1, 0.1],
+      ],
+      mats.stripeRed,
+    );
     tailAccent.name = "red tail livery accent";
     tailAccent.position.set(34.8, 5.2, side * 0.65);
     tailAccent.rotation.set(0.02, side > 0 ? 0 : Math.PI, 0.18);
@@ -403,15 +611,17 @@ function addTail() {
 
 function addLandingGear() {
   const strutMat = mats.leadingEdge;
-  const tireGeo = new THREE.TorusGeometry(0.62, 0.22, 16, 36);
-  const strutGeo = new THREE.CylinderGeometry(0.09, 0.12, 2.3, 12);
+  const tireGeo = new THREE.TorusGeometry(0.46, 0.15, 16, 36);
+  const hubGeo = new THREE.CylinderGeometry(0.23, 0.23, 0.08, 24);
+  const strutGeo = new THREE.CylinderGeometry(0.07, 0.1, 2.25, 12);
+  const bogieGeo = new THREE.BoxGeometry(1.35, 0.16, 0.16);
 
   const gearSets = [
-    [-26.5, -4.1, 0, 1],
-    [3.5, -4.35, -2.1, 2],
-    [3.5, -4.35, 2.1, 2],
-    [12.5, -4.25, -2.1, 2],
-    [12.5, -4.25, 2.1, 2],
+    [-26.5, -4.12, 0, 1],
+    [2.8, -4.35, -2.15, 2],
+    [2.8, -4.35, 2.15, 2],
+    [11.2, -4.3, -2.0, 2],
+    [11.2, -4.3, 2.0, 2],
   ];
   for (const [x, y, z, wheels] of gearSets) {
     const strut = new THREE.Mesh(strutGeo, strutMat);
@@ -420,14 +630,27 @@ function addLandingGear() {
     strut.castShadow = true;
     root.add(strut);
 
+    const bogie = new THREE.Mesh(bogieGeo, strutMat);
+    bogie.name = "landing gear bogie beam";
+    bogie.position.set(x, y + 0.12, z);
+    bogie.castShadow = true;
+    root.add(bogie);
+
     for (let i = 0; i < wheels; i++) {
       for (const offset of [-0.48, 0.48]) {
         const tire = new THREE.Mesh(tireGeo, mats.tire);
         tire.name = "landing gear tire";
-        tire.position.set(x + (i - 0.5) * 0.72, y, z + offset);
+        tire.position.set(x + (i - 0.5) * 0.66, y, z + offset);
         tire.rotation.y = Math.PI / 2;
         tire.castShadow = true;
         root.add(tire);
+
+        const hub = new THREE.Mesh(hubGeo, mats.leadingEdge);
+        hub.name = "brushed metal wheel hub";
+        hub.position.copy(tire.position);
+        hub.rotation.z = Math.PI / 2;
+        hub.castShadow = true;
+        root.add(hub);
       }
     }
   }
@@ -455,13 +678,27 @@ function addLightsAndWorld() {
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(420, 420),
-    new THREE.ShadowMaterial({ color: 0x2c3b45, opacity: 0.22 }),
+    new THREE.MeshStandardMaterial({ color: 0xa8b2ba, roughness: 0.92, metalness: 0.02 }),
   );
-  ground.name = "soft studio shadow plane";
+  ground.name = "concrete airport apron";
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -5.1;
   ground.receiveShadow = true;
   scene.add(ground);
+
+  const grid = new THREE.GridHelper(420, 42, 0x7d8992, 0x98a3aa);
+  grid.name = "subtle apron expansion joints";
+  grid.position.y = -5.08;
+  grid.material.transparent = true;
+  grid.material.opacity = 0.28;
+  scene.add(grid);
+
+  const apronLineMat = new THREE.MeshBasicMaterial({ color: 0xe7d36f, transparent: true, opacity: 0.78 });
+  const taxiLine = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.035, 210), apronLineMat);
+  taxiLine.name = "yellow apron taxi line";
+  taxiLine.position.set(58, -5.04, -52);
+  taxiLine.rotation.y = 0.08;
+  scene.add(taxiLine);
 
   const beaconTop = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), mats.beacon);
   beaconTop.name = "red anti-collision beacon";
