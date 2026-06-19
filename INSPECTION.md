@@ -13,15 +13,15 @@ Final visible criteria:
 - Distinct 747 hump and short upper deck taper.
 - Long wide-body fuselage with tapered nose and tail cone.
 - Four under-wing high-bypass turbofans with pylons, intakes, spinners and fan blades.
-- Swept main wings with upturned winglets.
+- Cambered swept main wings with dihedral, underwing fairings and upturned winglets.
 - Tall swept vertical stabilizer and swept horizontal stabilizers.
 - Passenger windows, upper-deck windows, cockpit windscreens, doors, cheatlines, panel rings and landing gear.
 - Repeatable screenshot system for every required inspection angle.
 - Preserved final inspection renders in `inspection-renders/`.
 
-Stopped after loop 21. The remaining visible limitations are inherent to this
-hand-built procedural mesh rather than a small fix: replacing it with a
-reference-grade modeled asset would be the next meaningful jump.
+Strategy switched after loop 21 from small polish tweaks to structural procedural
+geometry. The current version is still hand-built in Three.js, but it now uses a
+custom wing mesh, unified cockpit window geometry and modeled engine pylons.
 
 ## Iteration Log
 
@@ -46,3 +46,8 @@ reference-grade modeled asset would be the next meaningful jump.
 19. Moved the taxiway line off the aircraft so the top-view inspection was unobstructed.
 20. Added visible turbofan faces and brighter fan blades to improve the front engine view.
 21. Replaced blocky rectangular winglets with swept, slightly thickened winglet geometry.
+22. Replaced the flat extruded wing slab with a custom cambered airfoil mesh.
+23. Reduced and lowered the airfoil so it fit under the fuselage and restored fuselage readability.
+24. Removed overlapping cockpit decals and rebuilt the cockpit with framed forward/side panes.
+25. Replaced boxy engine pylons with swept plate-style pylon fairings.
+26. Added underwing flap-track canoe fairings to make the wing underside less bare.

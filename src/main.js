@@ -66,11 +66,13 @@ const mats = {
   dark: new THREE.MeshStandardMaterial({ color: 0x101820, roughness: 0.45 }),
   tire: new THREE.MeshStandardMaterial({ color: 0x0b0c0e, roughness: 0.74 }),
   glass: new THREE.MeshPhysicalMaterial({
-    color: 0x1d3142,
+    color: 0x213f56,
     roughness: 0.08,
     metalness: 0,
     transmission: 0.08,
     clearcoat: 1,
+    transparent: true,
+    opacity: 0.9,
     side: THREE.DoubleSide,
   }),
   stripeBlue: new THREE.MeshStandardMaterial({ color: 0x174a7c, roughness: 0.35 }),
@@ -229,20 +231,6 @@ function addWindows() {
     }
   }
 
-  const cockpitGeo = new THREE.PlaneGeometry(0.7, 0.42);
-  for (const side of [-1, 1]) {
-    for (const [x, z, ry] of [
-      [-37.0, side * 1.15, 0.62 * side],
-      [-36.65, side * 1.88, 0.4 * side],
-      [-36.1, side * 2.47, 0.2 * side],
-    ]) {
-      const c = new THREE.Mesh(cockpitGeo, mats.glass);
-      c.name = "angled cockpit windscreen";
-      c.position.set(x, 3.08, z);
-      c.rotation.set(0.1, ry, 0.02 * side);
-      cabin.add(c);
-    }
-  }
   root.add(cabin);
 }
 
@@ -256,52 +244,102 @@ function makePanelShape(name, points, material) {
   return mesh;
 }
 
+function makePanelOutline(name, points, color = 0xdfe7ec) {
+  const verts = points.map(([x, y]) => new THREE.Vector3(x, y, 0));
+  const line = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints(verts),
+    new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.72 }),
+  );
+  line.name = name;
+  return line;
+}
+
 function addNoseDetails() {
   const windscreen = new THREE.Group();
   const panels = [
     {
-      z: -0.88,
+      z: -1.02,
       points: [
-        [-0.42, -0.16],
-        [0.05, -0.14],
-        [0.14, 0.22],
-        [-0.34, 0.28],
+        [-0.32, -0.11],
+        [0.02, -0.12],
+        [0.11, 0.22],
+        [-0.25, 0.28],
       ],
     },
     {
-      z: -0.28,
+      z: -0.36,
       points: [
-        [-0.36, -0.14],
-        [0.36, -0.13],
-        [0.28, 0.27],
-        [-0.28, 0.27],
+        [-0.34, -0.13],
+        [0.3, -0.13],
+        [0.24, 0.29],
+        [-0.26, 0.28],
       ],
     },
     {
-      z: 0.28,
+      z: 0.36,
       points: [
-        [-0.36, -0.13],
-        [0.36, -0.14],
-        [0.28, 0.27],
-        [-0.28, 0.27],
+        [-0.3, -0.13],
+        [0.34, -0.13],
+        [0.26, 0.28],
+        [-0.24, 0.29],
       ],
     },
     {
-      z: 0.88,
+      z: 1.02,
       points: [
-        [-0.05, -0.14],
-        [0.42, -0.16],
-        [0.34, 0.28],
-        [-0.14, 0.22],
+        [-0.02, -0.12],
+        [0.32, -0.11],
+        [0.25, 0.28],
+        [-0.11, 0.22],
       ],
     },
   ];
 
   for (const panel of panels) {
     const glass = makePanelShape("forward cockpit windscreen pane", panel.points, mats.glass);
-    glass.position.set(-36.55, 3.16, panel.z);
+    glass.position.set(-36.8, 3.34, panel.z);
     glass.rotation.y = Math.PI / 2;
     windscreen.add(glass);
+
+    const outline = makePanelOutline("thin cockpit windscreen frame", panel.points);
+    outline.position.copy(glass.position);
+    outline.rotation.copy(glass.rotation);
+    windscreen.add(outline);
+  }
+
+  for (const side of [-1, 1]) {
+    for (const [x, y, points] of [
+      [
+        -36.35,
+        3.28,
+        [
+          [-0.42, -0.16],
+          [0.26, -0.13],
+          [0.38, 0.22],
+          [-0.3, 0.3],
+        ],
+      ],
+      [
+        -35.52,
+        3.22,
+        [
+          [-0.36, -0.14],
+          [0.28, -0.11],
+          [0.24, 0.2],
+          [-0.32, 0.24],
+        ],
+      ],
+    ]) {
+      const sidePane = makePanelShape("side cockpit window pane", points, mats.glass);
+      sidePane.position.set(x, y, side * 2.74);
+      sidePane.rotation.y = side > 0 ? 0.18 : Math.PI - 0.18;
+      windscreen.add(sidePane);
+
+      const sideFrame = makePanelOutline("thin side cockpit window frame", points);
+      sideFrame.position.copy(sidePane.position);
+      sideFrame.rotation.copy(sidePane.rotation);
+      windscreen.add(sideFrame);
+    }
   }
 
   const radomeLine = new THREE.LineLoop(
@@ -357,42 +395,88 @@ function addPanelLines() {
   }
 }
 
-function wingShape(side) {
-  const s = side;
-  const shape = new THREE.Shape();
-  shape.moveTo(-8, 1.8 * s);
-  shape.lineTo(3.8, 32 * s);
-  shape.lineTo(9.2, 31.2 * s);
-  shape.lineTo(5.0, 6.8 * s);
-  shape.lineTo(15.5, 5.0 * s);
-  shape.lineTo(15.8, 1.2 * s);
-  shape.lineTo(-8, 1.8 * s);
-  return shape;
+function makeWingGeometry(side) {
+  const spanStations = [0, 0.2, 0.48, 0.76, 1];
+  const chordStations = [0, 0.12, 0.42, 0.74, 1];
+  const topProfile = [0.04, 0.58, 0.46, 0.18, 0.02];
+  const bottomProfile = [0.03, 0.2, 0.17, 0.08, 0.02];
+  const vertices = [];
+  const indices = [];
+
+  const point = (span, chord, upper) => {
+    const leadingX = -6.9 + 11.2 * span;
+    const trailingX = 14.2 - 5.6 * span;
+    const chordLength = trailingX - leadingX;
+    const sweepCamber = Math.sin(Math.PI * chord) * 0.045;
+    const baseY = -1.08 + 0.92 * span;
+    const thickness = 0.46 - 0.3 * span;
+    const profile = upper ? topProfile[chordStations.indexOf(chord)] : bottomProfile[chordStations.indexOf(chord)];
+    return [
+      leadingX + chordLength * chord,
+      upper ? baseY + thickness * profile + sweepCamber : baseY - thickness * profile,
+      side * (4.4 + 27.4 * span),
+    ];
+  };
+
+  const addVertex = (span, chord, upper) => vertices.push(...point(span, chord, upper)) / 3 - 1;
+
+  const top = [];
+  const bottom = [];
+  for (const span of spanStations) {
+    const topRow = [];
+    const bottomRow = [];
+    for (const chord of chordStations) {
+      topRow.push(addVertex(span, chord, true));
+      bottomRow.push(addVertex(span, chord, false));
+    }
+    top.push(topRow);
+    bottom.push(bottomRow);
+  }
+
+  const quad = (a, b, c, d, flip = false) => {
+    if (flip) indices.push(a, d, c, a, c, b);
+    else indices.push(a, b, c, a, c, d);
+  };
+
+  for (let s = 0; s < spanStations.length - 1; s++) {
+    for (let c = 0; c < chordStations.length - 1; c++) {
+      quad(top[s][c], top[s + 1][c], top[s + 1][c + 1], top[s][c + 1], side < 0);
+      quad(bottom[s][c], bottom[s][c + 1], bottom[s + 1][c + 1], bottom[s + 1][c], side < 0);
+    }
+  }
+
+  for (let s = 0; s < spanStations.length - 1; s++) {
+    quad(top[s][0], bottom[s][0], bottom[s + 1][0], top[s + 1][0], side < 0);
+    quad(top[s][4], top[s + 1][4], bottom[s + 1][4], bottom[s][4], side < 0);
+  }
+  for (let c = 0; c < chordStations.length - 1; c++) {
+    quad(top[0][c], top[0][c + 1], bottom[0][c + 1], bottom[0][c], side < 0);
+    quad(top[4][c], bottom[4][c], bottom[4][c + 1], top[4][c + 1], side < 0);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
 function addWings() {
   for (const side of [-1, 1]) {
-    const wing = new THREE.Mesh(
-      new THREE.ExtrudeGeometry(wingShape(side), {
-        depth: 0.42,
-        bevelEnabled: true,
-        bevelThickness: 0.08,
-        bevelSize: 0.08,
-        bevelSegments: 2,
-      }),
-      mats.wing,
-    );
-    wing.name = "swept 747 main wing";
-    wing.rotation.x = Math.PI / 2;
-    wing.position.y = -0.55;
+    const wing = new THREE.Mesh(makeWingGeometry(side), mats.wing);
+    wing.name = "cambered swept 747 airfoil wing";
     wing.castShadow = true;
     wing.receiveShadow = true;
     root.add(wing);
 
-    const leading = new THREE.Mesh(new THREE.BoxGeometry(18, 0.35, 0.34), mats.leadingEdge);
-    leading.name = "metallic leading edge";
-    leading.position.set(-0.8, -0.38, side * 14.4);
-    leading.rotation.y = side * -0.39;
+    const leadingPath = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-6.75, -0.98, side * 5.2),
+      new THREE.Vector3(-4.1, -0.72, side * 11.8),
+      new THREE.Vector3(-0.4, -0.38, side * 21.5),
+      new THREE.Vector3(4.2, -0.08, side * 31.6),
+    ]);
+    const leading = new THREE.Mesh(new THREE.TubeGeometry(leadingPath, 32, 0.075, 8, false), mats.leadingEdge);
+    leading.name = "polished curved leading edge";
     leading.castShadow = true;
     root.add(leading);
 
@@ -437,6 +521,29 @@ function addWingDetails(side) {
     root.add(flapLine);
   }
 
+  for (const [x, z, length, radius] of [
+    [4.8, 11.2, 2.9, 0.32],
+    [7.0, 17.6, 3.35, 0.36],
+    [8.2, 24.2, 2.75, 0.28],
+  ]) {
+    const fairing = makeLathe(
+      "underwing flap-track canoe fairing",
+      [
+        [0.04 * radius, -length / 2],
+        [0.82 * radius, -length * 0.28],
+        [1.0 * radius, length * 0.12],
+        [0.68 * radius, length * 0.38],
+        [0.04 * radius, length / 2],
+      ],
+      mats.underside,
+      32,
+    );
+    fairing.position.set(x, -1.42, side * z);
+    fairing.scale.set(1, 0.62, 0.42);
+    fairing.castShadow = true;
+    root.add(fairing);
+  }
+
   const nav = new THREE.Mesh(
     new THREE.SphereGeometry(0.22, 16, 12),
     new THREE.MeshStandardMaterial({
@@ -455,10 +562,25 @@ function addEngines(side) {
     [-2.7, 13.4, 1.05],
     [2.9, 23.6, 0.98],
   ]) {
-    const pylon = new THREE.Mesh(new THREE.BoxGeometry(0.52, 2.35, 0.62), mats.panel);
-    pylon.name = "engine pylon";
-    pylon.position.set(x - 1.1, -2.0, side * z);
-    pylon.rotation.set(0.18, 0, side * -0.22);
+    const pylonShape = new THREE.Shape();
+    pylonShape.moveTo(x - 1.85, -1.0);
+    pylonShape.lineTo(x + 0.45, -1.26);
+    pylonShape.lineTo(x + 0.2, -3.02);
+    pylonShape.lineTo(x - 1.1, -3.18);
+    pylonShape.lineTo(x - 1.85, -1.0);
+    const pylon = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(pylonShape, {
+        depth: 0.34 * scale,
+        bevelEnabled: true,
+        bevelThickness: 0.025,
+        bevelSize: 0.025,
+        bevelSegments: 1,
+      }),
+      mats.panel,
+    );
+    pylon.name = "swept engine pylon fairing";
+    pylon.position.set(0, 0, side * z - 0.17 * scale);
+    pylon.rotation.z = -0.06;
     pylon.castShadow = true;
     root.add(pylon);
 
